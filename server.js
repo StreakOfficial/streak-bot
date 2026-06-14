@@ -9,14 +9,13 @@ app.use(express.json());
 const FILE = "./data.json";
 
 /* =========================
-   SAFE DATA SYSTEM
+   SAFE STORAGE
 ========================= */
 function getData() {
   try {
     if (!fs.existsSync(FILE)) return {};
     const raw = fs.readFileSync(FILE, "utf8");
-    if (!raw) return {};
-    return JSON.parse(raw);
+    return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
   }
@@ -31,21 +30,20 @@ function saveData(data) {
 }
 
 /* =========================
-   SETTINGS SYSTEM
+   SETTINGS API
 ========================= */
 app.get("/api/settings", (req, res) => {
   res.json(getData());
 });
 
 app.post("/api/settings", (req, res) => {
-  const current = getData();
-  const updated = { ...current, ...req.body };
+  const updated = { ...getData(), ...req.body };
   saveData(updated);
   res.json(updated);
 });
 
 /* =========================
-   EMBED SYSTEM (NEW)
+   EMBED SYSTEM
 ========================= */
 let latestEmbed = null;
 
@@ -62,4 +60,4 @@ app.get("/api/embed", (req, res) => {
    START SERVER
 ========================= */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("API running"));
+app.listen(PORT, () => console.log("API running on port", PORT));
