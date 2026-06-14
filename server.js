@@ -3,7 +3,6 @@ const cors = require("cors");
 const fs = require("fs");
 
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
@@ -11,7 +10,7 @@ const FILE = "./data.json";
 
 function getData() {
   if (!fs.existsSync(FILE)) return {};
-  return JSON.parse(fs.readFileSync(FILE));
+  return JSON.parse(fs.readFileSync(FILE, "utf8"));
 }
 
 function saveData(data) {
@@ -27,6 +26,5 @@ app.post("/api/settings", (req, res) => {
   res.json({ success: true });
 });
 
-app.listen(process.env.PORT || 3000, () => {
-  console.log("API running");
-});
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log("API running"));
