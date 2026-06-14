@@ -10,7 +10,7 @@ const {
 } = require("discord.js");
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds]
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 
 const VERIFY_URL = "https://streakofficial.github.io/verify.html";
@@ -23,30 +23,27 @@ client.once("ready", async () => {
 
   client.user.setPresence({
     status: "online",
-    activities: [
-      { name: "Security System", type: ActivityType.Watching }
-    ]
+    activities: [{ name: "Security System", type: ActivityType.Watching }]
   });
 
   await sendVerify();
 });
 
 async function sendVerify(force = false) {
+
   const channel = await client.channels.fetch(VERIFY_CHANNEL);
 
   const messages = await channel.messages.fetch({ limit: 10 });
 
-  const exists = messages.find(
-    m => m.author.id === client.user.id && m.embeds.length > 0
+  const exists = messages.find(m =>
+    m.author.id === client.user.id && m.embeds.length > 0
   );
 
   if (!force && (exists || sent)) return;
 
   const embed = new EmbedBuilder()
     .setTitle("🔒 Security Verification")
-    .setDescription(
-      "This server requires you to verify yourself to get access to channels.\nClick the button below to continue."
-    )
+    .setDescription("This server requires you to verify yourself. Click below.")
     .setColor("#5865F2");
 
   const button = new ActionRowBuilder().addComponents(
@@ -61,7 +58,6 @@ async function sendVerify(force = false) {
   sent = true;
 }
 
-// COMMAND: !sendverify
 client.on("messageCreate", async (msg) => {
   if (msg.author.bot) return;
 
