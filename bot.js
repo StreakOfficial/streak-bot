@@ -1,3 +1,4 @@
+const express = require("express");
 const {
   Client,
   GatewayIntentBits,
@@ -9,13 +10,12 @@ const {
   PermissionsBitField
 } = require("discord.js");
 
-const axios = require("axios");
+const app = express();
+app.use(express.json());
 
-const API = "https://streak-bot-9vnn.onrender.com";
-
-const VERIFY_CHANNEL = "1514196080638820363";
-const VERIFY_URL = "https://streakofficial.github.io/verify.html";
-
+/* =========================
+   DISCORD BOT
+========================= */
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -24,88 +24,28 @@ const client = new Client({
   ]
 });
 
-let verifySent = false;
+let embedQueue = [];
 
 /* =========================
-   SETTINGS FETCH
+   API ENDPOINT (FIX 502)
 ========================= */
-async function getSettings() {
-  try {
-    const res = await axios.get(`${API}/api/settings`);
-    return res.data || {};
-  } catch {
-    return {};
-  }
-}
+app.post("/api/embed", (req, res) => {
+  embedQueue.push(req.body);
+  res.json({ ok: true });
+});
 
-/* =========================
-   BOT READY
-========================= */
-client.once("ready", async () => {
-  console.log(`Logged in as ${client.user.tag}`);
-
-  const settings = await getSettings();
-
-  client.user.setPresence({
-    status: "online",
-    activities: [
-      {
-        name: settings.status || "Streak System",
-        type: ActivityType.Watching
-      }
-    ]
-  });
-
-  sendVerify();
+app.get("/api/embed", (req, res) => {
+  const item = embedQueue.shift();
+  res.json(item || null);
 });
 
 /* =========================
-   VERIFY SYSTEM (UNCHANGED LOGIC)
-========================= */
-async function sendVerify(force = false) {
-  try {
-    const channel = await client.channels.fetch(VERIFY_CHANNEL);
-
-    const messages = await channel.messages.fetch({ limit: 10 });
-
-    const exists = messages.find(
-      m => m.author.id === client.user.id && m.embeds.length > 0
-    );
-
-    if (!force && (exists || verifySent)) return;
-
-    const embed = new EmbedBuilder()
-      .setTitle("🔒 Security Verification")
-      .setDescription("Click below to verify.")
-      .setColor("#5865F2");
-
-    const button = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setLabel("Verify Now")
-        .setStyle(ButtonStyle.Link)
-        .setURL(VERIFY_URL)
-    );
-
-    await channel.send({
-      embeds: [embed],
-      components: [button]
-    });
-
-    verifySent = true;
-  } catch (err) {
-    console.log("Verify error:", err.message);
-  }
-}
-
-/* =========================
-   EMBED PROCESSOR (FIXED)
+   EMBED PROCESSOR
 ========================= */
 async function processEmbeds() {
   try {
-    const res = await axios.get(`${API}/api/embed`);
-    const data = res.data;
-
-    if (!data || !data.channel) return;
+    const data = embedQueue.shift();
+    if (!data) return;
 
     const channel = await client.channels.fetch(data.channel);
     if (!channel) return;
@@ -122,29 +62,22 @@ async function processEmbeds() {
   }
 }
 
-/* =========================
-   LOOP (SAFE)
-========================= */
 setInterval(processEmbeds, 2000);
 
 /* =========================
-   COMMANDS
+   READY
 ========================= */
-client.on("messageCreate", async (msg) => {
-  if (msg.author.bot) return;
-
-  if (msg.content === "!sendverify") {
-    if (!msg.member.permissions.has(PermissionsBitField.Flags.Administrator))
-      return msg.reply("No permission");
-
-    verifySent = false;
-    await sendVerify(true);
-
-    msg.reply("Verify sent ✅");
-  }
+client.once("ready", () => {
+  console.log(`Logged in as ${client.user.tag}`);
+  client.user.setActivity("Streak System", {
+    type: ActivityType.Watching
+  });
 });
 
 /* =========================
-   LOGIN
+   LOGIN + SERVER
 ========================= */
 client.login(process.env.TOKEN);
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log("API running on", PORT));
