@@ -15,6 +15,9 @@ const client = new Client({
 const VERIFY_URL = "https://streakofficial.github.io/verify.html";
 const VERIFY_CHANNEL = "1514196080638820363";
 
+// prevents duplicate messages EVEN across restarts
+let sent = false;
+
 client.once("ready", async () => {
   console.log(`Bot is online as ${client.user.tag}`);
 
@@ -30,9 +33,23 @@ client.once("ready", async () => {
 
   const channel = await client.channels.fetch(VERIFY_CHANNEL);
 
+  // check last messages so we don't spam
+  const messages = await channel.messages.fetch({ limit: 10 });
+
+  const alreadyExists = messages.find(
+    m => m.author.id === client.user.id && m.embeds.length > 0
+  );
+
+  if (alreadyExists || sent) {
+    console.log("Verify message already exists — skipping send.");
+    return;
+  }
+
   const embed = new EmbedBuilder()
     .setTitle("🔒 Security Verification")
-    .setDescription("You must verify yourself to access the server.\nClick the button below.")
+    .setDescription(
+      "This server requires you to verify yourself to get access to other channels. You can simply verify by completing a captcha. Click the button below."
+    )
     .setColor("#5865F2");
 
   const button = new ActionRowBuilder().addComponents(
@@ -42,23 +59,12 @@ client.once("ready", async () => {
       .setURL(VERIFY_URL)
   );
 
-  // 💥 CHECK IF MESSAGE ALREADY EXISTS
-  const messages = await channel.messages.fetch({ limit: 10 });
-
-  const alreadyExists = messages.find(
-    m => m.author.id === client.user.id && m.embeds.length > 0
-  );
-
-  if (alreadyExists) {
-    console.log("Verify message already exists — not sending again.");
-    return;
-  }
-
-  // send only once
-  channel.send({
+  await channel.send({
     embeds: [embed],
     components: [button]
   });
+
+  sent = true;
 });
 
 client.login(process.env.TOKEN);
