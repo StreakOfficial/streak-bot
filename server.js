@@ -28,3 +28,13 @@ app.post("/api/settings", (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("API running"));
+let latestEmbed = null;
+
+app.post("/api/embed", (req, res) => {
+  latestEmbed = req.body;
+  res.json({ success: true });
+});
+
+app.get("/api/embed", (req, res) => {
+  res.json(latestEmbed);
+});
