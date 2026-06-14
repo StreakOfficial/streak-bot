@@ -8,26 +8,45 @@ app.use(express.json());
 
 const FILE = "./data.json";
 
+/* =========================
+   SAFE DATA SYSTEM
+========================= */
 function getData() {
-  if (!fs.existsSync(FILE)) return {};
-  return JSON.parse(fs.readFileSync(FILE, "utf8"));
+  try {
+    if (!fs.existsSync(FILE)) return {};
+    const raw = fs.readFileSync(FILE, "utf8");
+    if (!raw) return {};
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
 }
 
 function saveData(data) {
-  fs.writeFileSync(FILE, JSON.stringify(data, null, 2));
+  try {
+    fs.writeFileSync(FILE, JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.log("Save error:", err.message);
+  }
 }
 
+/* =========================
+   SETTINGS SYSTEM
+========================= */
 app.get("/api/settings", (req, res) => {
   res.json(getData());
 });
 
 app.post("/api/settings", (req, res) => {
-  saveData(req.body);
-  res.json({ success: true });
+  const current = getData();
+  const updated = { ...current, ...req.body };
+  saveData(updated);
+  res.json(updated);
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("API running"));
+/* =========================
+   EMBED SYSTEM (NEW)
+========================= */
 let latestEmbed = null;
 
 app.post("/api/embed", (req, res) => {
@@ -38,3 +57,9 @@ app.post("/api/embed", (req, res) => {
 app.get("/api/embed", (req, res) => {
   res.json(latestEmbed);
 });
+
+/* =========================
+   START SERVER
+========================= */
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log("API running"));
