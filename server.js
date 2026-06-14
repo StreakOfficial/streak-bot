@@ -6,14 +6,14 @@ app.use(cors());
 app.use(express.json());
 
 /* =========================
-   SIMPLE IN-MEMORY QUEUE
-========================= */
-const embedQueue = [];
-
-/* =========================
    SETTINGS STORAGE
 ========================= */
 let settings = {};
+
+/* =========================
+   EMBED QUEUE (SAFE + FIXED)
+========================= */
+let embedQueue = [];
 
 /* =========================
    SETTINGS API
@@ -28,15 +28,15 @@ app.post("/api/settings", (req, res) => {
 });
 
 /* =========================
-   EMBED QUEUE SYSTEM (UPGRADED)
+   EMBED API
 ========================= */
 app.post("/api/embed", (req, res) => {
   embedQueue.push(req.body);
-  res.json({ success: true, queued: true });
+  res.json({ success: true });
 });
 
 app.get("/api/embed", (req, res) => {
-  const item = embedQueue.shift(); // FIFO queue
+  const item = embedQueue.shift();
   res.json(item || null);
 });
 
@@ -44,11 +44,11 @@ app.get("/api/embed", (req, res) => {
    HEALTH CHECK
 ========================= */
 app.get("/", (req, res) => {
-  res.send("Streak API Online");
+  res.send("Streak API Running");
 });
 
 /* =========================
-   START
+   START SERVER
 ========================= */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("API running on port", PORT));
