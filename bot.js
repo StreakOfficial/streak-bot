@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const {
   Client,
   GatewayIntentBits,
@@ -11,10 +13,8 @@ const {
 
 const axios = require("axios");
 
-// 🔴 RENDER API (YOUR DASHBOARD BACKEND)
-const API_URL = "https://streak-bot-9vnn.onrender.com/api/settings";
+const API_BASE = "https://streak-bot-9vnn.onrender.com";
 
-// VERIFY SYSTEM
 const VERIFY_URL = "https://streakofficial.github.io/verify.html";
 const VERIFY_CHANNEL = "1514196080638820363";
 
@@ -28,19 +28,23 @@ const client = new Client({
 
 let sent = false;
 
-// 🔄 GET SETTINGS FROM DASHBOARD
+/* =========================
+   GET SETTINGS
+========================= */
 async function getSettings() {
   try {
-    const res = await axios.get(API_URL);
-    return res.data;
-  } catch (err) {
-    console.log("API error:", err.message);
+    const res = await axios.get(`${API_BASE}/api/settings`);
+    return res.data || {};
+  } catch {
     return {};
   }
 }
 
+/* =========================
+   BOT READY
+========================= */
 client.once("ready", async () => {
-  console.log(`Bot online as ${client.user.tag}`);
+  console.log(`Logged in as ${client.user.tag}`);
 
   const settings = await getSettings();
 
@@ -48,16 +52,18 @@ client.once("ready", async () => {
     status: "online",
     activities: [
       {
-        name: settings.status || "Security System",
+        name: settings.status || "Streak System",
         type: ActivityType.Watching
       }
     ]
   });
 
-  await sendVerify();
+  sendVerify();
 });
 
-// 🔒 VERIFY EMBED SYSTEM (UNCHANGED)
+/* =========================
+   VERIFY SYSTEM
+========================= */
 async function sendVerify(force = false) {
   try {
     const channel = await client.channels.fetch(VERIFY_CHANNEL);
@@ -72,7 +78,7 @@ async function sendVerify(force = false) {
 
     const embed = new EmbedBuilder()
       .setTitle("🔒 Security Verification")
-      .setDescription("This server requires you to verify yourself. Click below.")
+      .setDescription("Click below to verify yourself.")
       .setColor("#5865F2");
 
     const button = new ActionRowBuilder().addComponents(
@@ -93,7 +99,41 @@ async function sendVerify(force = false) {
   }
 }
 
-// 💬 COMMAND SYSTEM
+/* =========================
+   EMBED SYSTEM LOOP
+========================= */
+async function checkEmbeds() {
+  try {
+    const res = await axios.get(`${API_BASE}/api/embed`);
+    const data = res.data;
+
+    if (!data) return;
+
+    const channel = await client.channels.fetch(data.channel);
+    if (!channel) return;
+
+    const embed = new EmbedBuilder()
+      .setTitle(data.title || "No title")
+      .setDescription(data.description || "No description")
+      .setColor("#a855f7");
+
+    await channel.send({ embeds: [embed] });
+
+    // clear after sending
+    await axios.post(`${API_BASE}/api/embed`, {});
+  } catch (err) {
+    console.log("Embed error:", err.message);
+  }
+}
+
+/* =========================
+   LOOP
+========================= */
+setInterval(checkEmbeds, 5000);
+
+/* =========================
+   COMMANDS
+========================= */
 client.on("messageCreate", async (msg) => {
   if (msg.author.bot) return;
 
@@ -104,8 +144,11 @@ client.on("messageCreate", async (msg) => {
     sent = false;
     await sendVerify(true);
 
-    msg.reply("Verify embed sent ✅");
+    msg.reply("Verify sent ✅");
   }
 });
 
+/* =========================
+   LOGIN
+========================= */
 client.login(process.env.TOKEN);
