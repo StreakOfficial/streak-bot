@@ -27,7 +27,7 @@ const client = new Client({
 let verifySent = false;
 
 /* =========================
-   SETTINGS FETCH
+   SETTINGS
 ========================= */
 async function getSettings() {
   try {
@@ -39,7 +39,7 @@ async function getSettings() {
 }
 
 /* =========================
-   READY EVENT
+   READY
 ========================= */
 client.once("ready", async () => {
   console.log(`Logged in as ${client.user.tag}`);
@@ -60,7 +60,7 @@ client.once("ready", async () => {
 });
 
 /* =========================
-   VERIFY SYSTEM
+   VERIFY SYSTEM (UNCHANGED)
 ========================= */
 async function sendVerify(force = false) {
   try {
@@ -86,10 +86,7 @@ async function sendVerify(force = false) {
         .setURL(VERIFY_URL)
     );
 
-    await channel.send({
-      embeds: [embed],
-      components: [button]
-    });
+    await channel.send({ embeds: [embed], components: [button] });
 
     verifySent = true;
   } catch (err) {
@@ -98,14 +95,14 @@ async function sendVerify(force = false) {
 }
 
 /* =========================
-   EMBED LOOP (MAIN FEATURE)
+   EMBED WORKER (NEW SYSTEM)
 ========================= */
-async function checkEmbeds() {
+async function processEmbed() {
   try {
     const res = await axios.get(`${API}/api/embed`);
     const data = res.data;
 
-    if (!data || !data.channel) return;
+    if (!data) return;
 
     const channel = await client.channels.fetch(data.channel);
     if (!channel) return;
@@ -117,14 +114,15 @@ async function checkEmbeds() {
 
     await channel.send({ embeds: [embed] });
 
-    // clear after sending
-    await axios.post(`${API}/api/embed`, {});
   } catch (err) {
     console.log("Embed error:", err.message);
   }
 }
 
-setInterval(checkEmbeds, 5000);
+/* =========================
+   EVENT-DRIVEN LOOP (OPTIMIZED)
+========================= */
+setInterval(processEmbed, 1500);
 
 /* =========================
    COMMANDS
