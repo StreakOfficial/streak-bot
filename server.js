@@ -22,29 +22,32 @@ const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET;
 
 let guild;
 
+// ---------------- READY ----------------
 client.once("ready", async () => {
   console.log("API ready");
   guild = await client.guilds.fetch(GUILD_ID);
 });
 
-// ---------------- STATS ----------------
-app.get("/stats", async (req, res) => {
+// ---------------- GIVE UNVERIFIED ON JOIN ----------------
+client.on("guildMemberAdd", async (member) => {
   try {
-    res.json({
-      members: guild.memberCount
-    });
-  } catch {
-    res.json({ members: 0 });
+    const role = member.guild.roles.cache.get(UNVERIFIED_ROLE);
+    if (role) {
+      await member.roles.add(role);
+      console.log(`Unverified given to ${member.user.tag}`);
+    }
+  } catch (err) {
+    console.log("Unverified role error:", err);
   }
 });
 
-// ---------------- VERIFY ROUTE ----------------
+// ---------------- VERIFY ENDPOINT ----------------
 app.post("/verify", async (req, res) => {
   try {
-    const { captcha } = req.body;
+    const { captcha, userId } = req.body;
 
-    if (!captcha) {
-      return res.send("Missing CAPTCHA ❌");
+    if (!captcha || !userId) {
+      return res.send("Missing data ❌");
     }
 
     // VERIFY TURNSTILE
@@ -60,11 +63,22 @@ app.post("/verify", async (req, res) => {
     const data = await verifyRes.json();
 
     if (!data.success) {
-      return res.send("Verification failed ❌");
+      return res.send("CAPTCHA failed ❌");
     }
 
-    // IMPORTANT: user must be passed from frontend (Discord OAuth later upgrade)
-    return res.send("CAPTCHA verified ✅ (next step: link Discord account)");
+    const member = await guild.members.fetch(userId).catch(() => null);
+
+    if (!member) {
+      return res.send("User not found ❌");
+    }
+
+    const verified = guild.roles.cache.get(VERIFIED_ROLE);
+    const unverified = guild.roles.cache.get(UNVERIFIED_ROLE);
+
+    if (unverified) await member.roles.remove(unverified);
+    if (verified) await member.roles.add(verified);
+
+    res.send("Verified successfully ✅");
 
   } catch (err) {
     console.log(err);
@@ -72,6 +86,16 @@ app.post("/verify", async (req, res) => {
   }
 });
 
+// ---------------- STATS ----------------
+app.get("/stats", async (req, res) => {
+  try {
+    res.json({ members: guild.memberCount });
+  } catch {
+    res.json({ members: 0 });
+  }
+});
+
+// ---------------- START ----------------
 app.listen(3000, () => {
   console.log("API running on port 3000");
 });
