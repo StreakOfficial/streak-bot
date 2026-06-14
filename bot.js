@@ -27,7 +27,7 @@ const client = new Client({
 let verifySent = false;
 
 /* =========================
-   SETTINGS
+   SETTINGS FETCH
 ========================= */
 async function getSettings() {
   try {
@@ -39,7 +39,7 @@ async function getSettings() {
 }
 
 /* =========================
-   READY
+   BOT READY
 ========================= */
 client.once("ready", async () => {
   console.log(`Logged in as ${client.user.tag}`);
@@ -60,7 +60,7 @@ client.once("ready", async () => {
 });
 
 /* =========================
-   VERIFY SYSTEM (UNCHANGED)
+   VERIFY SYSTEM (UNCHANGED LOGIC)
 ========================= */
 async function sendVerify(force = false) {
   try {
@@ -86,7 +86,10 @@ async function sendVerify(force = false) {
         .setURL(VERIFY_URL)
     );
 
-    await channel.send({ embeds: [embed], components: [button] });
+    await channel.send({
+      embeds: [embed],
+      components: [button]
+    });
 
     verifySent = true;
   } catch (err) {
@@ -95,14 +98,14 @@ async function sendVerify(force = false) {
 }
 
 /* =========================
-   EMBED WORKER (NEW SYSTEM)
+   EMBED PROCESSOR (FIXED)
 ========================= */
-async function processEmbed() {
+async function processEmbeds() {
   try {
     const res = await axios.get(`${API}/api/embed`);
     const data = res.data;
 
-    if (!data) return;
+    if (!data || !data.channel) return;
 
     const channel = await client.channels.fetch(data.channel);
     if (!channel) return;
@@ -120,9 +123,9 @@ async function processEmbed() {
 }
 
 /* =========================
-   EVENT-DRIVEN LOOP (OPTIMIZED)
+   LOOP (SAFE)
 ========================= */
-setInterval(processEmbed, 1500);
+setInterval(processEmbeds, 2000);
 
 /* =========================
    COMMANDS
