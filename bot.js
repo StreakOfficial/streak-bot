@@ -1,5 +1,3 @@
-require("dotenv").config();
-
 const {
   Client,
   GatewayIntentBits,
@@ -13,10 +11,10 @@ const {
 
 const axios = require("axios");
 
-const API_BASE = "https://streak-bot-9vnn.onrender.com";
+const API = "https://streak-bot-9vnn.onrender.com";
 
-const VERIFY_URL = "https://streakofficial.github.io/verify.html";
 const VERIFY_CHANNEL = "1514196080638820363";
+const VERIFY_URL = "https://streakofficial.github.io/verify.html";
 
 const client = new Client({
   intents: [
@@ -26,14 +24,14 @@ const client = new Client({
   ]
 });
 
-let sent = false;
+let verifySent = false;
 
 /* =========================
-   GET SETTINGS
+   SETTINGS FETCH
 ========================= */
 async function getSettings() {
   try {
-    const res = await axios.get(`${API_BASE}/api/settings`);
+    const res = await axios.get(`${API}/api/settings`);
     return res.data || {};
   } catch {
     return {};
@@ -41,7 +39,7 @@ async function getSettings() {
 }
 
 /* =========================
-   BOT READY
+   READY EVENT
 ========================= */
 client.once("ready", async () => {
   console.log(`Logged in as ${client.user.tag}`);
@@ -74,11 +72,11 @@ async function sendVerify(force = false) {
       m => m.author.id === client.user.id && m.embeds.length > 0
     );
 
-    if (!force && (exists || sent)) return;
+    if (!force && (exists || verifySent)) return;
 
     const embed = new EmbedBuilder()
       .setTitle("🔒 Security Verification")
-      .setDescription("Click below to verify yourself.")
+      .setDescription("Click below to verify.")
       .setColor("#5865F2");
 
     const button = new ActionRowBuilder().addComponents(
@@ -93,21 +91,21 @@ async function sendVerify(force = false) {
       components: [button]
     });
 
-    sent = true;
+    verifySent = true;
   } catch (err) {
     console.log("Verify error:", err.message);
   }
 }
 
 /* =========================
-   EMBED SYSTEM LOOP
+   EMBED LOOP (MAIN FEATURE)
 ========================= */
 async function checkEmbeds() {
   try {
-    const res = await axios.get(`${API_BASE}/api/embed`);
+    const res = await axios.get(`${API}/api/embed`);
     const data = res.data;
 
-    if (!data) return;
+    if (!data || !data.channel) return;
 
     const channel = await client.channels.fetch(data.channel);
     if (!channel) return;
@@ -120,15 +118,12 @@ async function checkEmbeds() {
     await channel.send({ embeds: [embed] });
 
     // clear after sending
-    await axios.post(`${API_BASE}/api/embed`, {});
+    await axios.post(`${API}/api/embed`, {});
   } catch (err) {
     console.log("Embed error:", err.message);
   }
 }
 
-/* =========================
-   LOOP
-========================= */
 setInterval(checkEmbeds, 5000);
 
 /* =========================
@@ -141,7 +136,7 @@ client.on("messageCreate", async (msg) => {
     if (!msg.member.permissions.has(PermissionsBitField.Flags.Administrator))
       return msg.reply("No permission");
 
-    sent = false;
+    verifySent = false;
     await sendVerify(true);
 
     msg.reply("Verify sent ✅");
