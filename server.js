@@ -8,15 +8,31 @@ app.use(express.json());
 
 const FILE = "./data.json";
 
-/* -------- READ DATA -------- */
+/* -------- READ DATA (SAFE VERSION) -------- */
 function getData() {
-  if (!fs.existsSync(FILE)) return {};
-  return JSON.parse(fs.readFileSync(FILE, "utf8"));
+  try {
+    if (!fs.existsSync(FILE)) return {};
+
+    const raw = fs.readFileSync(FILE, "utf8");
+
+    // prevents crash if file is empty or broken
+    if (!raw) return {};
+
+    return JSON.parse(raw);
+
+  } catch (err) {
+    console.log("Data read error:", err.message);
+    return {}; // fallback so server never crashes
+  }
 }
 
-/* -------- SAVE DATA -------- */
+/* -------- SAVE DATA (SAFE VERSION) -------- */
 function saveData(data) {
-  fs.writeFileSync(FILE, JSON.stringify(data, null, 2));
+  try {
+    fs.writeFileSync(FILE, JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.log("Data save error:", err.message);
+  }
 }
 
 /* -------- GET -------- */
@@ -26,10 +42,18 @@ app.get("/api/settings", (req, res) => {
 
 /* -------- POST -------- */
 app.post("/api/settings", (req, res) => {
-  const updated = { ...getData(), ...req.body };
+  const current = getData();
+
+  // merge safely (does NOT delete existing values)
+  const updated = {
+    ...current,
+    ...req.body
+  };
+
   saveData(updated);
   res.json(updated);
 });
 
+/* -------- START SERVER -------- */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("API running"));
