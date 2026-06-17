@@ -1,3 +1,4 @@
+```js
 const express = require("express");
 const {
   Client,
@@ -25,6 +26,60 @@ const client = new Client({
 });
 
 let embedQueue = [];
+
+/* =========================
+   TICKET TOOL AUTO RENAMER
+========================= */
+client.on("channelCreate", async (channel) => {
+  try {
+    if (!channel.guild) return;
+    if (!channel.isTextBased()) return;
+
+    // Only check channels that look like tickets
+    if (!channel.name.toLowerCase().includes("ticket")) return;
+
+    // Wait for Ticket Tool to post its message
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    const messages = await channel.messages.fetch({ limit: 10 });
+
+    let text = "";
+
+    messages.forEach(msg => {
+      text += " " + (msg.content || "");
+
+      msg.embeds.forEach(embed => {
+        text += " " + (embed.title || "");
+        text += " " + (embed.description || "");
+      });
+    });
+
+    text = text.toLowerCase();
+
+    const ticketTypes = {
+      "technical support": "tech-support",
+      "bug report": "bug-report",
+      "reseller application": "reseller-app",
+      "reseller support": "reseller-support",
+      "bulk purchase inquiry": "bulk-purchase",
+      "license transfer": "license-transfer",
+      "product access issue": "product-access",
+      "blacklist appeal": "blacklist-appeal",
+      "other questions": "other-questions"
+    };
+
+    for (const [keyword, newName] of Object.entries(ticketTypes)) {
+      if (text.includes(keyword)) {
+        await channel.setName(newName);
+        console.log(`Renamed ${channel.name} -> ${newName}`);
+        return;
+      }
+    }
+
+  } catch (err) {
+    console.log("Ticket rename error:", err.message);
+  }
+});
 
 /* =========================
    API ENDPOINT (FIX 502)
@@ -81,3 +136,4 @@ client.login(process.env.TOKEN);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("API running on", PORT));
+```
