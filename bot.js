@@ -1,14 +1,9 @@
-```js
 const express = require("express");
 const {
   Client,
   GatewayIntentBits,
   ActivityType,
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  PermissionsBitField
+  EmbedBuilder
 } = require("discord.js");
 
 const app = express();
@@ -27,21 +22,23 @@ const client = new Client({
 
 let embedQueue = [];
 
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 /* =========================
-   TICKET TOOL AUTO RENAMER
+   TICKET TOOL AUTO RENAMER TEST
 ========================= */
 client.on("channelCreate", async (channel) => {
   try {
     if (!channel.guild) return;
     if (!channel.isTextBased()) return;
 
-    // Only check channels that look like tickets
-    if (!channel.name.toLowerCase().includes("ticket")) return;
+    console.log(`New channel created: ${channel.name}`);
 
-    // Wait for Ticket Tool to post its message
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    await wait(12000);
 
-    const messages = await channel.messages.fetch({ limit: 10 });
+    const messages = await channel.messages.fetch({ limit: 20 });
 
     let text = "";
 
@@ -51,10 +48,19 @@ client.on("channelCreate", async (channel) => {
       msg.embeds.forEach(embed => {
         text += " " + (embed.title || "");
         text += " " + (embed.description || "");
+        text += " " + (embed.footer?.text || "");
+
+        embed.fields?.forEach(field => {
+          text += " " + field.name + " " + field.value;
+        });
       });
     });
 
+    text += " " + (channel.topic || "");
+    text += " " + (channel.parent?.name || "");
     text = text.toLowerCase();
+
+    console.log("Ticket text found:", text);
 
     const ticketTypes = {
       "technical support": "tech-support",
@@ -71,13 +77,15 @@ client.on("channelCreate", async (channel) => {
     for (const [keyword, newName] of Object.entries(ticketTypes)) {
       if (text.includes(keyword)) {
         await channel.setName(newName);
-        console.log(`Renamed ${channel.name} -> ${newName}`);
+        await channel.send(`Renamed ticket to: ${newName}`);
+        console.log(`Renamed ticket to ${newName}`);
         return;
       }
     }
 
+    await channel.send("I detected the ticket, but could not find the ticket type.");
   } catch (err) {
-    console.log("Ticket rename error:", err.message);
+    console.log("Ticket rename error:", err);
   }
 });
 
@@ -136,4 +144,3 @@ client.login(process.env.TOKEN);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("API running on", PORT));
-```
